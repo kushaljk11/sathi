@@ -1,0 +1,1145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  YOUTH
+  COUNSELOR
+  ORGANIZATION
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum VerificationStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DeliveryMode {
+  ONLINE
+  IN_PERSON
+  BOTH
+}
+
+enum AppointmentStatus {
+  PENDING_PAYMENT
+  PENDING_COUNSELOR
+  CONFIRMED
+  DECLINED
+  CANCELLED
+  COMPLETED
+  MISSED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentProvider {
+  ESEWA
+  KHALTI
+  FREE
+}
+
+enum RefundStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RelationshipStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CLOSED
+}
+
+enum PlanStatus {
+  DRAFT
+  PROPOSED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ACHIEVED
+  DROPPED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  PARTIALLY_COMPLETED
+  SKIPPED
+  OVERDUE
+  CANCELLED
+}
+
+enum PublicationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum ProgramBookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+  COMPLETED
+}
+
+enum ConsentCategory {
+  ASSESSMENT_SUMMARY
+  SUPPORT_NEED_PROFILE
+  CHECKIN_TRENDS
+  SUPPORT_HISTORY
+}
+
+enum RecipientType {
+  COUNSELOR
+  ORGANIZATION
+}
+
+enum RecommendationStatus {
+  PENDING
+  BOOKED
+  SAVED
+  DISMISSED
+}
+
+// ---------------- AUTH ----------------
+model User {
+  id                     String        @id @default(uuid()) @db.Uuid
+  email                  String        @unique
+  passwordHash           String
+  role                   Role
+  status                 AccountStatus @default(ACTIVE)
+  emailVerifiedAt        DateTime?
+  displayName            String
+  timezone               String        @default("Asia/Kathmandu")
+  postingRestrictedUntil DateTime?
+  moderationWarnings     Int           @default(0)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  deletedAt              DateTime?
+
+  refreshTokens    RefreshToken[]
+  emailTokens      EmailVerificationToken[]
+  resetTokens      PasswordResetToken[]
+  youthProfile     YouthProfile?
+  counselorProfile CounselorProfile?
+  orgStaff         OrganizationStaff[]
+  notifications    Notification[]
+  notificationPref NotificationPreference?
+  auditLogs        AuditLog[]
+  googleCredential GoogleCredential?
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique
+  familyId   String    @db.Uuid
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  replacedBy String?   @db.Uuid
+  createdAt  DateTime  @default(now())
+  userAgent  String?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+}
+
+// ---------------- PROFILES ----------------
+model YouthProfile {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  userId               String                  @unique @db.Uuid
+  ageGroup             String?
+  dateOfBirth          DateTime?
+  locationArea         String?
+  latitude             Float?
+  longitude            Float?
+  maxTravelKm          Int?
+  preferredLanguages   String[]
+  preferredMode        DeliveryMode            @default(BOTH)
+  accessibility        String[]
+  checkInFrequencyDays Int                     @default(7)
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns             WellbeingCheckIn[]
+  assessments          Assessment[]
+  needProfiles         SupportNeedProfile[]
+  safetyScreenings     SafetyScreening[]
+  appointments         Appointment[]
+  relationships        SupportRelationship[]
+  consents             ConsentRecord[]
+  programBookings      ProgramBooking[]
+  recommendations      ProgramRecommendation[]
+}
+
+model CounselorProfile {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  userId             String                  @unique @db.Uuid
+  qualifications     String
+  experienceYears    Int                     @default(0)
+  bio                String?
+  specializations    String[]
+  supportedConcerns  String[]
+  languages          String[]
+  ageGroups          String[]
+  locationArea       String?
+  latitude           Float?
+  longitude          Float?
+  mode               DeliveryMode            @default(BOTH)
+  sessionFeePaisa    Int                     @default(0)
+  acceptingBookings  Boolean                 @default(true)
+  verificationStatus VerificationStatus      @default(DRAFT)
+  rejectionReason    String?
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents          VerificationDocument[]
+  availability       Availability[]
+  exceptions         AvailabilityException[]
+  slots              AppointmentSlot[]
+  appointments       Appointment[]
+  relationships      SupportRelationship[]
+}
+
+model Organization {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  name               String
+  description        String?
+  contactEmail       String
+  contactPhone       String?
+  locationArea       String?
+  latitude           Float?
+  longitude          Float?
+  languages          String[]
+  operatingHours     String?
+  verificationStatus VerificationStatus     @default(DRAFT)
+  rejectionReason    String?
+  createdAt          DateTime               @default(now())
+  staff              OrganizationStaff[]
+  documents          VerificationDocument[]
+  services           Service[]
+  programs           Program[]
+}
+
+model OrganizationStaff {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  userId         String       @db.Uuid
+  isOwner        Boolean      @default(false)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+model VerificationDocument {
+  id             String            @id @default(uuid()) @db.Uuid
+  counselorId    String?           @db.Uuid
+  organizationId String?           @db.Uuid
+  fileName       String
+  storageKey     String
+  mimeType       String
+  uploadedAt     DateTime          @default(now())
+  counselor      CounselorProfile? @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// ---------------- ASSESSMENT ----------------
+model AssessmentQuestion {
+  id       String             @id @default(uuid()) @db.Uuid
+  key      String             @unique
+  step     Int
+  prompt   String
+  type     String // SINGLE | MULTI | SLIDER | TEXT
+  required Boolean            @default(true)
+  isSafety Boolean            @default(false)
+  version  Int                @default(1)
+  active   Boolean            @default(true)
+  options  AssessmentOption[]
+}
+
+model AssessmentOption {
+  id         String             @id @default(uuid()) @db.Uuid
+  questionId String             @db.Uuid
+  value      String
+  label      String
+  order      Int
+  question   AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model Assessment {
+  id          String               @id @default(uuid()) @db.Uuid
+  youthId     String               @db.Uuid
+  status      String               @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED
+  draft       Json?
+  submittedAt DateTime?
+  createdAt   DateTime             @default(now())
+  youth       YouthProfile         @relation(fields: [youthId], references: [id], onDelete: Cascade)
+  responses   AssessmentResponse[]
+  needProfile SupportNeedProfile?
+}
+
+model AssessmentResponse {
+  id           String     @id @default(uuid()) @db.Uuid
+  assessmentId String     @db.Uuid
+  questionKey  String
+  value        Json
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, questionKey])
+}
+
+model SupportNeedProfile {
+  id             String        @id @default(uuid()) @db.Uuid
+  youthId        String        @db.Uuid
+  assessmentId   String?       @unique @db.Uuid
+  concerns       String[]
+  impactLevel    Int
+  durationBucket String
+  desiredSupport String[]
+  languages      String[]
+  mode           DeliveryMode
+  locationArea   String?
+  latitude       Float?
+  longitude      Float?
+  maxTravelKm    Int?
+  availability   Json // [{day:0-6, startMin, endMin}]
+  accessibility  String[]
+  createdAt      DateTime      @default(now())
+  youth          YouthProfile  @relation(fields: [youthId], references: [id], onDelete: Cascade)
+  assessment     Assessment?   @relation(fields: [assessmentId], references: [id])
+  matchingRuns   MatchingRun[]
+}
+
+model WellbeingCheckIn {
+  id          String       @id @default(uuid()) @db.Uuid
+  youthId     String       @db.Uuid
+  mood        Int // 1-5
+  stress      Int // 0-10
+  sleep       Int // 1-5
+  energy      Int // 1-5
+  social      Int // 1-5
+  functioning Int // 1-5
+  concerns    String[]
+  reflection  String?
+  createdAt   DateTime     @default(now())
+  youth       YouthProfile @relation(fields: [youthId], references: [id], onDelete: Cascade)
+
+  @@index([youthId, createdAt])
+}
+
+model SafetyScreening {
+  id          String       @id @default(uuid()) @db.Uuid
+  youthId     String       @db.Uuid
+  answers     Json
+  escalated   Boolean      @default(false)
+  ruleVersion Int
+  createdAt   DateTime     @default(now())
+  youth       YouthProfile @relation(fields: [youthId], references: [id], onDelete: Cascade)
+}
+
+model SafetyResource {
+  id       String  @id @default(uuid()) @db.Uuid
+  title    String
+  phone    String?
+  url      String?
+  details  String
+  language String  @default("en")
+  approved Boolean @default(false)
+  order    Int     @default(0)
+}
+
+// ---------------- MATCHING ----------------
+model MatchingConfiguration {
+  id        String        @id @default(uuid()) @db.Uuid
+  version   Int           @unique
+  weights   Json // {concern,specialization,language,availability,location,mode}
+  active    Boolean       @default(false)
+  createdBy String?       @db.Uuid
+  createdAt DateTime      @default(now())
+  runs      MatchingRun[]
+}
+
+model MatchingRun {
+  id              String                   @id @default(uuid()) @db.Uuid
+  needProfileId   String                   @db.Uuid
+  configId        String                   @db.Uuid
+  createdAt       DateTime                 @default(now())
+  needProfile     SupportNeedProfile       @relation(fields: [needProfileId], references: [id], onDelete: Cascade)
+  config          MatchingConfiguration    @relation(fields: [configId], references: [id])
+  recommendations ProviderRecommendation[]
+}
+
+model ProviderRecommendation {
+  id          String                @id @default(uuid()) @db.Uuid
+  runId       String                @db.Uuid
+  counselorId String                @db.Uuid
+  rank        Int
+  totalScore  Float
+  explanation String[]
+  gaps        String[]
+  run         MatchingRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  factors     MatchingFactorScore[]
+}
+
+model MatchingFactorScore {
+  id               String                 @id @default(uuid()) @db.Uuid
+  recommendationId String                 @db.Uuid
+  factor           String
+  rawScore         Float
+  weight           Float
+  weighted         Float
+  recommendation   ProviderRecommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+}
+
+// ---------------- CONSENT ----------------
+model ConsentRecord {
+  id             String           @id @default(uuid()) @db.Uuid
+  youthId        String           @db.Uuid
+  recipientId    String           @db.Uuid
+  recipientType  RecipientType
+  category       ConsentCategory
+  purpose        String
+  granted        Boolean
+  consentVersion Int              @default(1)
+  grantedAt      DateTime         @default(now())
+  withdrawnAt    DateTime?
+  youth          YouthProfile     @relation(fields: [youthId], references: [id], onDelete: Cascade)
+  history        ConsentHistory[]
+
+  @@unique([youthId, recipientId, category])
+}
+
+model ConsentHistory {
+  id        String        @id @default(uuid()) @db.Uuid
+  consentId String        @db.Uuid
+  granted   Boolean
+  changedAt DateTime      @default(now())
+  consent   ConsentRecord @relation(fields: [consentId], references: [id], onDelete: Cascade)
+}
+
+model SensitiveDataAccessLog {
+  id         String          @id @default(uuid()) @db.Uuid
+  accessorId String          @db.Uuid
+  youthId    String          @db.Uuid
+  category   ConsentCategory
+  allowed    Boolean
+  reason     String
+  createdAt  DateTime        @default(now())
+
+  @@index([youthId])
+}
+
+// ---------------- BOOKING ----------------
+model Availability {
+  id          String           @id @default(uuid()) @db.Uuid
+  counselorId String           @db.Uuid
+  dayOfWeek   Int // 0=Sun
+  startMinute Int
+  endMinute   Int
+  slotMinutes Int              @default(60)
+  counselor   CounselorProfile @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+}
+
+model AvailabilityException {
+  id          String           @id @default(uuid()) @db.Uuid
+  counselorId String           @db.Uuid
+  startsAt    DateTime
+  endsAt      DateTime
+  reason      String?
+  counselor   CounselorProfile @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+}
+
+model AppointmentSlot {
+  id           String           @id @default(uuid()) @db.Uuid
+  counselorId  String           @db.Uuid
+  startsAt     DateTime
+  endsAt       DateTime
+  isBooked     Boolean          @default(false)
+  counselor    CounselorProfile @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+  hold         SlotHold?
+  appointments Appointment[]
+
+  @@unique([counselorId, startsAt])
+}
+
+model SlotHold {
+  id          String          @id @default(uuid()) @db.Uuid
+  slotId      String          @unique @db.Uuid
+  youthUserId String          @db.Uuid
+  expiresAt   DateTime
+  slot        AppointmentSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+}
+
+model Appointment {
+  id             String               @id @default(uuid()) @db.Uuid
+  youthId        String               @db.Uuid
+  counselorId    String               @db.Uuid
+  slotId         String               @db.Uuid
+  relationshipId String?              @db.Uuid
+  status         AppointmentStatus    @default(PENDING_PAYMENT)
+  mode           DeliveryMode
+  meetingUrl     String?
+  feePaisa       Int
+  cancelReason   String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  youth          YouthProfile         @relation(fields: [youthId], references: [id])
+  counselor      CounselorProfile     @relation(fields: [counselorId], references: [id])
+  slot           AppointmentSlot      @relation(fields: [slotId], references: [id])
+  relationship   SupportRelationship? @relation(fields: [relationshipId], references: [id])
+  payments       Payment[]
+  sessionRecord  SessionRecord?
+  meeting        Meeting?
+  startsAt       DateTime
+  endsAt         DateTime
+
+  @@index([slotId])
+}
+
+model Payment {
+  id               String          @id @default(uuid()) @db.Uuid
+  appointmentId    String?         @db.Uuid
+  programBookingId String?         @db.Uuid
+  provider         PaymentProvider
+  reference        String          @unique
+  transactionId    String?         @unique
+  providerRef      String?
+  payerUserId      String          @db.Uuid
+  failureReason    String?
+  amountPaisa      Int
+  status           PaymentStatus   @default(INITIATED)
+  rawVerification  Json?
+  createdAt        DateTime        @default(now())
+  verifiedAt       DateTime?
+  appointment      Appointment?    @relation(fields: [appointmentId], references: [id])
+  programBooking   ProgramBooking? @relation(fields: [programBookingId], references: [id])
+  refunds          Refund[]
+}
+
+model Refund {
+  id          String       @id @default(uuid()) @db.Uuid
+  paymentId   String       @db.Uuid
+  amountPaisa Int
+  reason      String
+  status      RefundStatus @default(REQUESTED)
+  gatewayRef  String?
+  requestedBy String?      @db.Uuid
+  processedBy String?      @db.Uuid
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+  payment     Payment      @relation(fields: [paymentId], references: [id])
+}
+
+// ---------------- SUPPORT ----------------
+model SupportRelationship {
+  id           String                 @id @default(uuid()) @db.Uuid
+  youthId      String                 @db.Uuid
+  counselorId  String                 @db.Uuid
+  status       RelationshipStatus     @default(ACTIVE)
+  startedAt    DateTime               @default(now())
+  endedAt      DateTime?
+  youth        YouthProfile           @relation(fields: [youthId], references: [id])
+  counselor    CounselorProfile       @relation(fields: [counselorId], references: [id])
+  appointments Appointment[]
+  plans        SupportPlan[]
+  reviews      ProgressReview[]
+  milestones   ProgressMilestone[]
+  timeline     TimelineEvent[]
+  notes        PrivateCounselorNote[]
+  conversation Conversation?
+
+  @@index([youthId, counselorId])
+}
+
+model SessionRecord {
+  id            String      @id @default(uuid()) @db.Uuid
+  appointmentId String      @unique @db.Uuid
+  summary       String
+  topics        String[]
+  nextSteps     String?
+  followUpDate  DateTime?
+  createdAt     DateTime    @default(now())
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+model PrivateCounselorNote {
+  id             String              @id @default(uuid()) @db.Uuid
+  relationshipId String              @db.Uuid
+  body           String
+  createdAt      DateTime            @default(now())
+  relationship   SupportRelationship @relation(fields: [relationshipId], references: [id])
+}
+
+model SupportPlan {
+  id             String               @id @default(uuid()) @db.Uuid
+  relationshipId String               @db.Uuid
+  status         PlanStatus           @default(DRAFT)
+  currentVersion Int                  @default(1)
+  createdAt      DateTime             @default(now())
+  relationship   SupportRelationship  @relation(fields: [relationshipId], references: [id])
+  versions       SupportPlanVersion[]
+  goals          Goal[]
+}
+
+model SupportPlanVersion {
+  id          String      @id @default(uuid()) @db.Uuid
+  planId      String      @db.Uuid
+  version     Int
+  title       String
+  description String
+  startDate   DateTime
+  reviewDate  DateTime
+  agreedAt    DateTime?
+  createdAt   DateTime    @default(now())
+  plan        SupportPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, version])
+}
+
+model Goal {
+  id          String        @id @default(uuid()) @db.Uuid
+  planId      String        @db.Uuid
+  title       String
+  description String?
+  startDate   DateTime
+  targetDate  DateTime?
+  status      GoalStatus    @default(NOT_STARTED)
+  plan        SupportPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  tasks       SupportTask[]
+}
+
+model SupportTask {
+  id                  String              @id @default(uuid()) @db.Uuid
+  goalId              String              @db.Uuid
+  title               String
+  description         String?
+  dueDate             DateTime?
+  completedAt         DateTime?
+  status              TaskStatus          @default(PENDING)
+  youthUpdate         String?
+  reflection          String?
+  counselorReviewedAt DateTime?
+  goal                Goal                @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  history             TaskStatusHistory[]
+}
+
+model TaskStatusHistory {
+  id        String      @id @default(uuid()) @db.Uuid
+  taskId    String      @db.Uuid
+  from      TaskStatus?
+  to        TaskStatus
+  changedBy String      @db.Uuid
+  changedAt DateTime    @default(now())
+  task      SupportTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model ProgressReview {
+  id             String              @id @default(uuid()) @db.Uuid
+  relationshipId String              @db.Uuid
+  outcome        String
+  nextSteps      String?
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime            @default(now())
+  relationship   SupportRelationship @relation(fields: [relationshipId], references: [id])
+}
+
+model ProgressMilestone {
+  id             String               @id @default(uuid()) @db.Uuid
+  relationshipId String?              @db.Uuid
+  youthUserId    String               @db.Uuid
+  kind           String
+  achievedAt     DateTime             @default(now())
+  relationship   SupportRelationship? @relation(fields: [relationshipId], references: [id])
+
+  @@unique([youthUserId, kind, relationshipId])
+}
+
+model TimelineEvent {
+  id             String              @id @default(uuid()) @db.Uuid
+  relationshipId String              @db.Uuid
+  type           String
+  title          String
+  occurredAt     DateTime            @default(now())
+  relationship   SupportRelationship @relation(fields: [relationshipId], references: [id])
+}
+
+// ---------------- ORGANIZATION ----------------
+model Service {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @db.Uuid
+  title          String
+  description    String
+  category       String
+  durationMin    Int
+  capacity       Int
+  locationArea   String?
+  mode           DeliveryMode
+  costPaisa      Int               @default(0)
+  status         PublicationStatus @default(DRAFT)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model Program {
+  id              String                  @id @default(uuid()) @db.Uuid
+  organizationId  String                  @db.Uuid
+  title           String
+  description     String
+  category        String
+  startsAt        DateTime
+  endsAt          DateTime
+  seats           Int
+  seatsTaken      Int                     @default(0)
+  minAge          Int?
+  maxAge          Int?
+  eligibility     String?
+  locationArea    String?
+  mode            DeliveryMode
+  costPaisa       Int                     @default(0)
+  requirements    String?
+  status          PublicationStatus       @default(DRAFT)
+  rejectionReason String?
+  createdAt       DateTime                @default(now())
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions        ProgramSession[]
+  bookings        ProgramBooking[]
+  waitlist        WaitlistEntry[]
+  recommendations ProgramRecommendation[]
+}
+
+model ProgramSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  programId String   @db.Uuid
+  startsAt  DateTime
+  endsAt    DateTime
+  program   Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+}
+
+model ProgramBooking {
+  id         String               @id @default(uuid()) @db.Uuid
+  programId  String               @db.Uuid
+  youthId    String               @db.Uuid
+  status     ProgramBookingStatus
+  createdAt  DateTime             @default(now())
+  program    Program              @relation(fields: [programId], references: [id])
+  youth      YouthProfile         @relation(fields: [youthId], references: [id])
+  payments   Payment[]
+  attendance Attendance[]
+  feedback   ServiceFeedback?
+
+  @@unique([programId, youthId])
+}
+
+model WaitlistEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  programId String   @db.Uuid
+  youthId   String   @db.Uuid
+  position  Int
+  createdAt DateTime @default(now())
+  program   Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, youthId])
+}
+
+model Attendance {
+  id        String         @id @default(uuid()) @db.Uuid
+  bookingId String         @db.Uuid
+  date      DateTime
+  present   Boolean
+  booking   ProgramBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model ServiceFeedback {
+  id        String         @id @default(uuid()) @db.Uuid
+  bookingId String         @unique @db.Uuid
+  rating    Int
+  comment   String?
+  createdAt DateTime       @default(now())
+  booking   ProgramBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model ProgramRecommendation {
+  id          String               @id @default(uuid()) @db.Uuid
+  programId   String               @db.Uuid
+  youthId     String               @db.Uuid
+  counselorId String               @db.Uuid // never exposed to organization
+  note        String?
+  status      RecommendationStatus @default(PENDING)
+  createdAt   DateTime             @default(now())
+  program     Program              @relation(fields: [programId], references: [id])
+  youth       YouthProfile         @relation(fields: [youthId], references: [id])
+}
+
+// ---------------- COMMUNICATION ----------------
+model Notification {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  type           String
+  title          String
+  body           String
+  idempotencyKey String    @unique
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model NotificationPreference {
+  id            String  @id @default(uuid()) @db.Uuid
+  userId        String  @unique @db.Uuid
+  email         Boolean @default(true)
+  push          Boolean @default(false)
+  quietStartMin Int?
+  quietEndMin   Int?
+  fcmToken      String?
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id             String              @id @default(uuid()) @db.Uuid
+  relationshipId String              @unique @db.Uuid
+  blocked        Boolean             @default(false)
+  relationship   SupportRelationship @relation(fields: [relationshipId], references: [id])
+  messages       Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  senderId       String       @db.Uuid
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model ContentReport {
+  id         String    @id @default(uuid()) @db.Uuid
+  reporterId String    @db.Uuid
+  targetType String // POST | COMMENT | MESSAGE
+  targetId   String    @db.Uuid
+  reason     String
+  details    String?
+  resolution String? // ACTIONED | DISMISSED
+  resolvedAt DateTime?
+  resolvedBy String?   @db.Uuid
+  createdAt  DateTime  @default(now())
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+// ---------------- CONTENT ----------------
+model ResourceCategory {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String     @unique
+  resources Resource[]
+}
+
+model Resource {
+  id          String            @id @default(uuid()) @db.Uuid
+  categoryId  String            @db.Uuid
+  title       String
+  body        String
+  contentType String // ARTICLE | GUIDE | VIDEO
+  url         String?
+  language    String            @default("en")
+  status      PublicationStatus @default(DRAFT)
+  createdAt   DateTime          @default(now())
+  category    ResourceCategory  @relation(fields: [categoryId], references: [id])
+}
+
+model CommunityPost {
+  id          String              @id @default(uuid()) @db.Uuid
+  authorId    String              @db.Uuid
+  pseudonym   String
+  category    String
+  body        String
+  status      ContentStatus       @default(PENDING_MODERATION)
+  contentHash String
+  removedAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  comments    CommunityComment[]
+  reactions   CommunityReaction[]
+
+  @@index([status, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model CommunityComment {
+  id          String        @id @default(uuid()) @db.Uuid
+  postId      String        @db.Uuid
+  parentId    String?       @db.Uuid
+  authorId    String        @db.Uuid
+  pseudonym   String
+  body        String
+  status      ContentStatus @default(PENDING_MODERATION)
+  contentHash String
+  removedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, status])
+  @@index([authorId, createdAt])
+}
+
+enum ContentStatus {
+  PENDING_MODERATION
+  APPROVED
+  FLAGGED
+  HIDDEN
+  REMOVED
+  REJECTED
+  APPEALED
+}
+
+enum MeetingProvider {
+  GOOGLE_MEET
+  MANUAL_DEV
+}
+
+enum MeetingStatus {
+  PENDING
+  CREATING
+  READY
+  FAILED
+  CANCELLED
+  COMPLETED
+}
+
+model CommunityReaction {
+  id        String        @id @default(uuid()) @db.Uuid
+  postId    String        @db.Uuid
+  userId    String        @db.Uuid
+  kind      String // SUPPORT | RELATE | THANKS
+  createdAt DateTime      @default(now())
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId, kind])
+}
+
+/// One automated or human moderation evaluation of a post/comment. Original text is retained here as evidence.
+model ModerationCase {
+  id               String             @id @default(uuid()) @db.Uuid
+  targetType       String // POST | COMMENT
+  targetId         String             @db.Uuid
+  authorId         String             @db.Uuid
+  originalText     String
+  provider         String
+  categories       String[]
+  maxScore         Float
+  scores           Json
+  reasons          String[]
+  outcome          ContentStatus
+  safetyEscalated  Boolean            @default(false)
+  needsHumanReview Boolean            @default(false)
+  resolvedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  retainUntil      DateTime
+  actions          ModerationAction[]
+  appeals          ModerationAppeal[]
+
+  @@index([needsHumanReview, resolvedAt])
+  @@index([targetType, targetId])
+}
+
+model ModerationAction {
+  id           String          @id @default(uuid()) @db.Uuid
+  caseId       String?         @db.Uuid
+  moderatorId  String          @db.Uuid
+  targetUserId String?         @db.Uuid
+  action       String // APPROVE | REMOVE | RESTORE | WARN | RESTRICT | SUSPEND | ESCALATE | DISMISS_REPORT | APPEAL_UPHELD | APPEAL_DENIED
+  note         String?
+  createdAt    DateTime        @default(now())
+  case         ModerationCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+}
+
+model ModerationAppeal {
+  id        String         @id @default(uuid()) @db.Uuid
+  caseId    String         @db.Uuid
+  authorId  String         @db.Uuid
+  message   String
+  status    String         @default("OPEN") // OPEN | UPHELD | DENIED
+  decidedAt DateTime?
+  createdAt DateTime       @default(now())
+  case      ModerationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, authorId])
+}
+
+model UserBlock {
+  id        String   @id @default(uuid()) @db.Uuid
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model Meeting {
+  id                 String          @id @default(uuid()) @db.Uuid
+  appointmentId      String          @unique @db.Uuid
+  provider           MeetingProvider
+  providerMeetingId  String?
+  providerEventId    String?
+  meetingUrl         String?
+  organizerUserId    String          @db.Uuid
+  startTime          DateTime
+  endTime            DateTime
+  status             MeetingStatus   @default(PENDING)
+  creationStatus     String? // last creation error code or OK
+  cancellationStatus String?
+  attempts           Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  appointment        Appointment     @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+/// OAuth tokens encrypted at rest (AES-256-GCM).
+model GoogleCredential {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @db.Uuid
+  encryptedRefresh String
+  scope            String
+  googleEmailHint  String?
+  status           String   @default("CONNECTED") // CONNECTED | REVOKED | ERROR
+  lastError        String?
+  connectedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OAuthState {
+  id        String   @id @default(uuid()) @db.Uuid
+  stateHash String   @unique
+  userId    String   @db.Uuid
+  expiresAt DateTime
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+}
+
+model SavedProgram {
+  id        String   @id @default(uuid()) @db.Uuid
+  youthId   String   @db.Uuid
+  programId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@unique([youthId, programId])
+}
+
+// ---------------- MARKETING / CMS ----------------
+model BlogCategory {
+  id       String        @id @default(uuid()) @db.Uuid
+  name     String        @unique
+  slug     String        @unique
+  articles BlogArticle[]
+}
+
+model BlogArticle {
+  id             String            @id @default(uuid()) @db.Uuid
+  slug           String            @unique
+  title          String
+  excerpt        String
+  body           String
+  coverImageKey  String?
+  coverAlt       String?
+  categoryId     String            @db.Uuid
+  authorName     String
+  authorUserId   String?           @db.Uuid
+  status         PublicationStatus @default(DRAFT)
+  featured       Boolean           @default(false)
+  readingMinutes Int               @default(1)
+  publishedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  category       BlogCategory      @relation(fields: [categoryId], references: [id])
+
+  @@index([status, publishedAt])
+}
+
+model ContactMessage {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String
+  email      String
+  subject    String
+  message    String
+  status     String    @default("NEW") // NEW | IN_PROGRESS | RESOLVED | SPAM
+  ipHash     String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status, createdAt])
+}

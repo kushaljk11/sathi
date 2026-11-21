@@ -1,0 +1,50 @@
+{
+  "name": "sathi",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "frontend",
+    "backend/api",
+    "backend/worker"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @sathi/api & npm run dev -w @sathi/web & npm run dev -w @sathi/worker",
+    "dev:api": "npm run dev -w @sathi/api",
+    "dev:web": "npm run dev -w @sathi/web",
+    "dev:worker": "npm run dev -w @sathi/worker",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx backend/prisma/seed.ts",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "prisma": {
+    "schema": "backend/prisma/schema.prisma",
+    "seed": "tsx backend/prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^24.0.0",
+    "argon2": "^0.44.0",
+    "eslint": "^9.38.0",
+    "prettier": "^3.6.0",
+    "prisma": "^6.19.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.46.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0"
+  },
+  "allowScripts": {
+    "@prisma/client": true,
+    "@prisma/engines": true,
+    "argon2": true,
+    "esbuild": true,
+    "msgpackr-extract": true,
+    "prisma": true
+  }
+}
