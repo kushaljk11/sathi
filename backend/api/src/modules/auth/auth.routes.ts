@@ -23,6 +23,7 @@ r.post('/login', limiter, asyncH(async (req, res) => {
 }));
 
 r.post('/refresh', asyncH(async (req, res) => {
+  if (!req.cookies?.[COOKIE]) return ok(res, null); // anonymous visitor: no session, not an error
   const { refreshToken, ...rest } = await svc.rotate(req.cookies?.[COOKIE]);
   setCookie(res, refreshToken);
   ok(res, rest);

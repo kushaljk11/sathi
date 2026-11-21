@@ -13,13 +13,16 @@ export const homeFor = (role: string) => ({ YOUTH: '/youth', COUNSELOR: '/counse
 
 const Shell = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="grid min-h-screen place-items-center bg-gradient-to-br from-brand-50 to-sky-50 p-4">
-    <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl shadow-brand-900/5">
+    <div className="w-full max-w-md">
+    <Link to="/" className="mb-4 inline-flex items-center gap-1 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-700">← Back to sathi home</Link>
+    <div className="w-full rounded-3xl bg-white p-8 shadow-xl shadow-brand-900/5">
       <div className="mb-6 text-center">
-        <HeartHandshake className="mx-auto size-10 text-brand-600" />
+        <Link to="/" aria-label="Sathi home" className="mx-auto inline-block rounded-xl"><HeartHandshake className="mx-auto size-10 text-brand-600" /></Link>
         <h1 className="mt-2 text-2xl font-bold text-slate-900">{title}</h1>
         <p className="text-sm text-slate-500">From finding support to staying supported.</p>
       </div>
       {children}
+    </div>
     </div>
   </div>
 );

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import {
   HeartHandshake, LayoutDashboard, SmilePlus, Users, CalendarDays, ShieldCheck, Building2, SlidersHorizontal, LogOut, LifeBuoy, ClipboardList,
   Route as RouteIcon, LineChart, Sparkles, MessagesSquare, BookOpen, Bell, Lock, Settings, UserCircle, Clock, Briefcase, FileCheck2,
-  Flag, CreditCard, ScrollText, Cog, ListChecks, Menu, X, Video, Server,
+  Flag, CreditCard, ScrollText, Cog, ListChecks, Menu, X, Video, Server, Newspaper, Mail,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useApi } from '../lib/hooks';
@@ -31,7 +31,7 @@ const NAV: Record<string, Group[]> = {
   ADMIN: [
     { items: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true }, { to: '/admin/users', label: 'Users', icon: Users }] },
     { title: 'Review', items: [{ to: '/admin/verifications', label: 'Verifications', icon: FileCheck2 }, { to: '/admin/approvals', label: 'Listing approvals', icon: ListChecks }, { to: '/admin/moderation', label: 'Moderation', icon: Flag }] },
-    { title: 'Content & config', items: [{ to: '/admin/resources', label: 'Resources', icon: BookOpen }, { to: '/admin/assessment', label: 'Assessment', icon: ClipboardList }, { to: '/admin/matching', label: 'Matching weights', icon: SlidersHorizontal }, { to: '/admin/settings', label: 'Platform settings', icon: Cog }] },
+    { title: 'Content & config', items: [{ to: '/admin/resources', label: 'Resources', icon: BookOpen }, { to: '/admin/blog', label: 'Blog', icon: Newspaper }, { to: '/admin/contact', label: 'Contact inbox', icon: Mail }, { to: '/admin/assessment', label: 'Assessment', icon: ClipboardList }, { to: '/admin/matching', label: 'Matching weights', icon: SlidersHorizontal }, { to: '/admin/settings', label: 'Platform settings', icon: Cog }] },
     { title: 'Operations', items: [{ to: '/admin/payments', label: 'Payments & refunds', icon: CreditCard }, { to: '/admin/audit', label: 'Audit logs', icon: ScrollText }, { to: '/admin/jobs', label: 'Background jobs', icon: Server }] },
   ],
 };

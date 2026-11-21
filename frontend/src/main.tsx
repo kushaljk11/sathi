@@ -32,7 +32,18 @@ const OrgHome = L(og, 'OrgHome'), OrgPrograms = L(og, 'OrgPrograms'), OrgProgram
 const ad = () => import('./pages/admin');
 const AdminHome = L(ad, 'AdminHome'), AdminUsers = L(ad, 'AdminUsers'), AdminVerifications = L(ad, 'AdminVerifications'), AdminApprovals = L(ad, 'AdminApprovals');
 const AdminModeration = L(ad, 'AdminModeration'), AdminResources = L(ad, 'AdminResources'), AdminAssessment = L(ad, 'AdminAssessment'), AdminMatching = L(ad, 'AdminMatching');
+const cms = () => import('./pages/admin-cms');
+const AdminBlog = L(cms, 'AdminBlog'), AdminContact = L(cms, 'AdminContact');
 const AdminPayments = L(ad, 'AdminPayments'), AdminAudit = L(ad, 'AdminAudit'), AdminSettings = L(ad, 'AdminSettings'), AdminJobs = L(ad, 'AdminJobs');
+
+// Public marketing site — lazy-loaded so the dashboard bundle is unaffected
+const MarketingLayout = lazy(() => import('./marketing/layouts/MarketingLayout'));
+const HomePage = lazy(() => import('./marketing/pages/HomePage'));
+const AboutPage = lazy(() => import('./marketing/pages/AboutPage'));
+const FeaturesPage = lazy(() => import('./marketing/pages/FeaturesPage'));
+const ContactPage = lazy(() => import('./marketing/pages/ContactPage'));
+const BlogPage = lazy(() => import('./marketing/pages/BlogPage'));
+const BlogDetailPage = lazy(() => import('./marketing/pages/BlogDetailPage'));
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 15_000, refetchOnWindowFocus: false } } });
 
@@ -42,11 +53,6 @@ function Guard({ roles, children }: { roles?: User['role'][]; children: ReactNod
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to={homeFor(user.role)} replace />;
   return <Suspense fallback={<LoadingBlock />}>{children}</Suspense>;
-}
-function Root() {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  return <Navigate to={user ? homeFor(user.role) : '/login'} replace />;
 }
 const Y = (n: ReactNode) => <Guard roles={['YOUTH']}>{n}</Guard>;
 const C = (n: ReactNode) => <Guard roles={['COUNSELOR']}>{n}</Guard>;
@@ -61,7 +67,14 @@ createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Root />} />
+              <Route element={<Suspense fallback={null}><MarketingLayout /></Suspense>}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/blog" element={<BlogPage />} />
+                <Route path="/blog/:slug" element={<BlogDetailPage />} />
+              </Route>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
@@ -105,6 +118,8 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/admin/audit" element={A(<AdminAudit />)} />
                 <Route path="/admin/settings" element={A(<AdminSettings />)} />
                 <Route path="/admin/jobs" element={A(<AdminJobs />)} />
+                <Route path="/admin/blog" element={A(<AdminBlog />)} />
+                <Route path="/admin/contact" element={A(<AdminContact />)} />
                 <Route path="/community" element={Any(<Community />)} />
                 <Route path="/community/mine" element={Any(<MyContent />)} />
                 <Route path="/community/:id" element={Any(<CommunityPost />)} />
