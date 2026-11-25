@@ -3,7 +3,7 @@ import argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import type { Role } from '@prisma/client';
 import { createApp } from '../src/app';
-import { prisma } from '../src/lib/core';
+import { prisma } from '../src/config/database';
 
 export const app = createApp();
 export const api = () => request(app);

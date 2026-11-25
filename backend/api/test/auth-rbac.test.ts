@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { api, auth, makeUser, truncateAll, PASSWORD } from './helpers';
-import { prisma } from '../src/lib/core';
+import { prisma } from '../src/config/database';
 
 beforeAll(truncateAll);
 

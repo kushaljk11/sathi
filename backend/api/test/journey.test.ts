@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, vi, afterEach } from 'vitest';
 import { api, auth, makeUser, makeSlot, truncateAll, allConsents, confirmedAppointment } from './helpers';
-import { prisma } from '../src/lib/core';
-import { esewaSign } from '../src/modules/payments/gateways';
+import { prisma } from '../src/config/database';
+import { esewaSign } from '../src/integrations/esewa/esewa.client';
 
 beforeAll(truncateAll);
 afterEach(() => vi.restoreAllMocks());

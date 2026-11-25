@@ -4,7 +4,7 @@
  */
 import { Queue, Worker, DelayedError, type Job } from 'bullmq';
 import { processJob, DelayError } from '../../api/src/jobs/processor';
-import { redisConnection, QUEUE } from '../../api/src/lib/queue';
+import { redisConnection, QUEUE } from '../../api/src/queues/queue';
 
 const connection = redisConnection();
 const dlq = new Queue(`${QUEUE}-dlq`, { connection });

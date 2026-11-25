@@ -5,34 +5,34 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import { AuthProvider, useAuth, type User } from './lib/auth';
 import DashboardLayout from './layouts/DashboardLayout';
-import { Login, Register, VerifyEmail, ForgotPassword, ResetPassword, homeFor } from './pages/Auth';
+import { Login, Register, VerifyEmail, ForgotPassword, ResetPassword, homeFor } from './features/auth/Auth';
 import { LoadingBlock, UiProvider } from './components/ui';
 
 const L = <T extends Record<string, unknown>>(f: () => Promise<T>, name: keyof T) => lazy(() => f().then((m) => ({ default: m[name] as unknown as ComponentType })));
 // Youth
-const yc = () => import('./pages/youth/core');
-const yj = () => import('./pages/youth/journey');
-const yx = () => import('./pages/youth/explore');
+const yc = () => import('./features/youth/core');
+const yj = () => import('./features/youth/journey');
+const yx = () => import('./features/youth/explore');
 const YouthHome = L(yc, 'YouthHome'), CheckInWizard = L(yc, 'CheckInWizard'), AssessmentWizard = L(yc, 'AssessmentWizard'), Matches = L(yc, 'Matches');
 const CounselorBooking = L(yc, 'CounselorBooking'), PaymentResult = L(yc, 'PaymentResult'), YouthAppointments = L(yj, 'YouthAppointments');
 const Journey = L(yj, 'Journey'), JourneyDetail = L(yj, 'JourneyDetail'), Progress = L(yj, 'ProgressPage');
 const Programs = L(yx, 'Programs'), ProgramDetail = L(yx, 'ProgramDetail'), Privacy = L(yx, 'PrivacyCenter');
 // Shared
-const sh = () => import('./pages/shared');
+const sh = () => import('./features/shared/index');
 const Community = L(sh, 'Community'), CommunityPost = L(sh, 'CommunityPost'), MyContent = L(sh, 'MyCommunityContent'), Resources = L(sh, 'Resources');
 const Notifications = L(sh, 'Notifications'), Settings = L(sh, 'Settings'), Safety = L(sh, 'Safety');
 // Counselor
-const co = () => import('./pages/counselor');
+const co = () => import('./features/counselor/index');
 const CounselorHome = L(co, 'CounselorHome'), CounselorAppointments = L(co, 'CounselorAppointments'), Clients = L(co, 'Clients'), ClientDetail = L(co, 'ClientDetail');
 const Availability = L(co, 'Availability'), CounselorProfile = L(co, 'CounselorProfile'), CounselorGoogle = L(co, 'CounselorGoogle');
 // Organization
-const og = () => import('./pages/organization');
+const og = () => import('./features/organization/index');
 const OrgHome = L(og, 'OrgHome'), OrgPrograms = L(og, 'OrgPrograms'), OrgProgramDetail = L(og, 'OrgProgramDetail'), OrgServices = L(og, 'OrgServices'), OrgProfile = L(og, 'OrgProfile');
 // Admin
-const ad = () => import('./pages/admin');
+const ad = () => import('./features/admin/index');
 const AdminHome = L(ad, 'AdminHome'), AdminUsers = L(ad, 'AdminUsers'), AdminVerifications = L(ad, 'AdminVerifications'), AdminApprovals = L(ad, 'AdminApprovals');
 const AdminModeration = L(ad, 'AdminModeration'), AdminResources = L(ad, 'AdminResources'), AdminAssessment = L(ad, 'AdminAssessment'), AdminMatching = L(ad, 'AdminMatching');
-const cms = () => import('./pages/admin-cms');
+const cms = () => import('./features/admin/cms');
 const AdminBlog = L(cms, 'AdminBlog'), AdminContact = L(cms, 'AdminContact');
 const AdminPayments = L(ad, 'AdminPayments'), AdminAudit = L(ad, 'AdminAudit'), AdminSettings = L(ad, 'AdminSettings'), AdminJobs = L(ad, 'AdminJobs');
 

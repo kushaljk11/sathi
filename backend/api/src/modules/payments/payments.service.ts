@@ -1,28 +1,34 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@prisma/client';
 import { calculateRefund } from '@sathi/shared';
-import { prisma, HttpError, notFound, audit, getSetting } from '../../lib/core';
-import { esewaConfigured, khaltiConfigured } from '../../lib/env';
-import { notify } from '../../lib/notify';
-import { esewa, khalti, type VerifyResult } from './gateways';
+import { prisma } from '../../config/database';
+import { esewaConfigured, khaltiConfigured } from '../../config/env';
+import { AppError, notFound } from '../../core/errors/app.error';
+import { audit } from '../../helpers/audit.helper';
+import { notify } from '../../helpers/notification.helper';
+import { getSetting } from '../../helpers/settings.helper';
+import { esewa } from '../../integrations/esewa/esewa.client';
+import { khalti } from '../../integrations/khalti/khalti.client';
+import type { VerifyResult } from '../../integrations/payment-gateway.types';
+import type { PaymentProvider, PaymentTarget } from './payments.types';
 
 export const availableProviders = () => ({ ESEWA: esewaConfigured, KHALTI: khaltiConfigured });
 
-async function targetFor(userId: string, b: { appointmentId?: string; programBookingId?: string }) {
+async function targetFor(userId: string, b: PaymentTarget) {
   if (b.appointmentId) {
     const a = await prisma.appointment.findUnique({ where: { id: b.appointmentId }, include: { youth: true } });
     if (!a || a.youth.userId !== userId) throw notFound('Appointment');
-    if (a.status !== 'PENDING_PAYMENT') throw new HttpError(409, 'This appointment does not need payment');
+    if (a.status !== 'PENDING_PAYMENT') throw new AppError(409, 'This appointment does not need payment');
     return { amount: a.feePaisa, name: 'Counseling session', data: { appointmentId: a.id } };
   }
   const pb = await prisma.programBooking.findUnique({ where: { id: b.programBookingId }, include: { youth: true, program: true } });
   if (!pb || pb.youth.userId !== userId) throw notFound('Booking');
-  if (pb.status !== 'PENDING_PAYMENT') throw new HttpError(409, 'This booking does not need payment');
+  if (pb.status !== 'PENDING_PAYMENT') throw new AppError(409, 'This booking does not need payment');
   return { amount: pb.program.costPaisa, name: pb.program.title.slice(0, 50), data: { programBookingId: pb.id } };
 }
 
-export async function initiatePayment(userId: string, provider: 'ESEWA' | 'KHALTI', target: { appointmentId?: string; programBookingId?: string }) {
-  if (!availableProviders()[provider]) throw new HttpError(503, `${provider} is not configured on this server`, 'PROVIDER_UNAVAILABLE');
+export async function initiatePayment(userId: string, provider: PaymentProvider, target: PaymentTarget) {
+  if (!availableProviders()[provider]) throw new AppError(503, `${provider} is not configured on this server`, 'PROVIDER_UNAVAILABLE');
   const t = await targetFor(userId, target);
   const reference = randomUUID();
   const payment = await prisma.payment.create({ data: { ...t.data, provider, reference, amountPaisa: t.amount, payerUserId: userId, status: 'INITIATED' } });
@@ -30,9 +36,9 @@ export async function initiatePayment(userId: string, provider: 'ESEWA' | 'KHALT
     const init = provider === 'ESEWA' ? esewa.initiate(reference, t.amount) : await khalti.initiate(reference, t.amount, t.name);
     if (init.providerRef) await prisma.payment.update({ where: { id: payment.id }, data: { providerRef: init.providerRef, status: 'PENDING' } });
     return { paymentId: payment.id, reference, redirect: init.redirect };
-  } catch (e) {
+  } catch {
     await prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED', failureReason: 'INITIATION_FAILED' } });
-    throw new HttpError(502, 'Could not start payment with the gateway. Please try again.', 'GATEWAY_ERROR');
+    throw new AppError(502, 'Could not start payment with the gateway. Please try again.', 'GATEWAY_ERROR');
   }
 }
 
@@ -57,7 +63,10 @@ export async function applyVerification(paymentId: string, v: VerifyResult) {
     return prisma.payment.update({ where: { id: p.id }, data: { status: 'FAILED', failureReason: 'AMOUNT_MISMATCH', rawVerification: v.raw as Prisma.InputJsonValue } });
   }
   if (v.status !== 'SUCCESS')
-    return prisma.payment.update({ where: { id: p.id }, data: { status: v.status === 'PENDING' ? 'PENDING' : 'FAILED', failureReason: v.status === 'FAILED' ? 'GATEWAY_DECLINED' : null, rawVerification: v.raw as Prisma.InputJsonValue } });
+    return prisma.payment.update({
+      where: { id: p.id },
+      data: { status: v.status === 'PENDING' ? 'PENDING' : 'FAILED', failureReason: v.status === 'FAILED' ? 'GATEWAY_DECLINED' : null, rawVerification: v.raw as Prisma.InputJsonValue },
+    });
 
   // Idempotent settle: only one caller can move a non-success payment to SUCCESS.
   const won = await prisma.payment.updateMany({
@@ -95,7 +104,9 @@ export async function requestAppointmentRefund(appointmentId: string, cancelledB
   const policy = await getSetting('refund.policy');
   const amount = calculateRefund(paid.amountPaisa, a.startsAt, new Date(), cancelledBy, policy);
   if (amount <= 0) return null;
-  return prisma.refund.create({ data: { paymentId: paid.id, amountPaisa: amount, reason: cancelledBy === 'COUNSELOR' ? 'Counselor cancelled or declined' : 'Cancelled by youth', requestedBy: actorId } });
+  return prisma.refund.create({
+    data: { paymentId: paid.id, amountPaisa: amount, reason: cancelledBy === 'COUNSELOR' ? 'Counselor cancelled or declined' : 'Cancelled by youth', requestedBy: actorId },
+  });
 }
 
 /**
@@ -115,4 +126,41 @@ export async function completeRefund(refundId: string, adminId: string, gatewayR
   await audit(adminId, 'REFUND_COMPLETED', 'Refund', rf.id);
   await notify(rf.payment.payerUserId, { type: 'REFUND', title: 'Refund completed', body: 'Your refund has been processed by the payment provider.', key: `refund-done:${rf.id}` });
   return done;
+}
+
+// ---- Read side + gateway return handling (used by the controller) ----
+
+/** Payer polls status; triggers a server-side re-verification if still pending. */
+export async function getPaymentStatus(userId: string, reference: string) {
+  const p = await prisma.payment.findFirst({ where: { reference, payerUserId: userId } });
+  if (!p) throw notFound('Payment');
+  const fresh = ['INITIATED', 'PENDING'].includes(p.status) ? await verifyAndSettle(reference) : p;
+  return {
+    reference: fresh.reference,
+    status: fresh.status,
+    amountPaisa: fresh.amountPaisa,
+    provider: fresh.provider,
+    appointmentId: fresh.appointmentId,
+    programBookingId: fresh.programBookingId,
+  };
+}
+
+export const listPayments = (userId: string) => prisma.payment.findMany({ where: { payerUserId: userId }, orderBy: { createdAt: 'desc' }, include: { refunds: true }, take: 100 });
+
+/** Gateway return URLs are browser redirects and never trusted: the result always comes from server-to-server verification. */
+export async function esewaReturnStatus(reference: string, callbackData: string | undefined) {
+  const data = callbackData ? esewa.verifyCallbackSignature(callbackData) : null;
+  if (!data || data.transaction_uuid !== reference) return 'invalid';
+  return (await verifyAndSettle(reference)).status;
+}
+
+export async function esewaFailedStatus(reference: string) {
+  const p = await verifyAndSettle(reference).catch(() => null);
+  return p?.status ?? 'FAILED';
+}
+
+export async function khaltiReturnStatus(reference: string, pidx: string | undefined) {
+  const p = await prisma.payment.findUnique({ where: { reference } });
+  if (!p || (pidx !== undefined && pidx !== p.providerRef)) return 'invalid';
+  return (await verifyAndSettle(reference)).status;
 }

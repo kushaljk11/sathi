@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { motion, useScroll, useSpring } from 'motion/react';
 import { ArrowLeft, FileQuestion, Info, LifeBuoy } from 'lucide-react';
 import { ErrorState, Skeleton } from '../../components/ui';
-import { useApi } from '../../lib/hooks';
+import { useApi } from '../../hooks';
 import { Seo } from '../components/Seo';
 import { AnimatedSection } from '../components/AnimatedSection';
 import { ArticleCard, ArticleCover, ArticleMeta, CategoryBadge, coverUrl, type ArticleDetail, type ArticleSummary } from '../components/ArticleCard';

@@ -74,7 +74,7 @@ server sends via FCM HTTP v1 when a token is stored in notification preferences.
 
 ## 11. File storage
 The local driver writes to `UPLOAD_DIR` (outside the web root). For production implement the `StorageDriver`
-interface (`backend/api/src/lib/storage.ts`) with an S3-compatible private bucket and add AV scanning (ClamAV) before `put`.
+interface (`backend/api/src/integrations/storage/storage.service.ts`) with an S3-compatible private bucket and add AV scanning (ClamAV) before `put`.
 
 ## 12. Launch checklist (external dependencies)
 - [ ] Clinical/professional review of assessment questions, safety questions & rules, safety resources (with real, verified local emergency numbers), and moderation lexicons.

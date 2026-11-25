@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue } from 'motion/react';
 import { ArrowRight, BadgeCheck, CalendarCheck, Check, ClipboardList, HeartPulse, ShieldCheck, Sparkles, TrendingUp, Video } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
-import { homeFor } from '../../pages/Auth';
+import { homeFor } from '../../features/auth/Auth';
 import { EASE } from '../animations/variants';
 import { ButtonLink } from './ButtonLink';
 

@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { makeUser, makeSlot, truncateAll, confirmedAppointment } from './helpers';
-import { prisma } from '../src/lib/core';
-import { processJob, quietDelayMs, sweep, daily } from '../src/jobs/processor';
-import { notify } from '../src/lib/notify';
+import { prisma } from '../src/config/database';
+import { processJob, sweep, daily } from '../src/jobs/processor';
+import { quietDelayMs } from '../src/utils/date.util';
+import { notify } from '../src/helpers/notification.helper';
 
 beforeAll(truncateAll);
 

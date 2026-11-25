@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { BookOpen, Search, X } from 'lucide-react';
 import { EmptyState, ErrorState, Pagination, Skeleton, cx } from '../../components/ui';
-import { useApi } from '../../lib/hooks';
+import { useApi } from '../../hooks';
 import { errMsg } from '../../lib/api';
 import { Seo } from '../components/Seo';
 import { AnimatedItem, AnimatedSection } from '../components/AnimatedSection';

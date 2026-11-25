@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, CheckCircle2, ChevronDown, Clock, LifeBuoy, Mail, Send, ShieldCheck } from 'lucide-react';
 import { Button, ErrorState, Input, Textarea, cx } from '../../components/ui';
-import { post } from '../../lib/hooks';
+import { post } from '../../hooks';
 import { errMsg } from '../../lib/api';
 import { Seo } from '../components/Seo';
 import { AnimatedItem, AnimatedSection, SectionHeading } from '../components/AnimatedSection';

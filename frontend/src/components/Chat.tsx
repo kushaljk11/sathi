@@ -3,7 +3,7 @@ import { io, type Socket } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Send, Flag, Ban } from 'lucide-react';
 import { getAccessToken } from '../lib/api';
-import { useApi, useAction, post } from '../lib/hooks';
+import { useApi, useAction, post } from '../hooks';
 import { useAuth } from '../lib/auth';
 import { Button, ErrorState, LoadingBlock, Notice, fmtTime, fmtDate, useConfirm, cx } from './ui';
 

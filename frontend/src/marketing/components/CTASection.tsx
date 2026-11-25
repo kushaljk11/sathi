@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../../lib/auth';
-import { homeFor } from '../../pages/Auth';
+import { homeFor } from '../../features/auth/Auth';
 import { useMotionVariants } from '../animations/variants';
 import { ButtonLink } from './ButtonLink';
 

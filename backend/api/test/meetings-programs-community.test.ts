@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { api, auth, makeUser, truncateAll, confirmedAppointment } from './helpers';
-import { prisma, encrypt } from '../src/lib/core';
-import { providers, MeetingProviderError } from '../src/modules/meetings/providers';
+import { prisma } from '../src/config/database';
+import { encrypt } from '../src/utils/hash.util';
+import { providers, MeetingProviderError } from '../src/integrations/google-calendar/google-calendar.provider';
 import { ensureMeeting } from '../src/modules/meetings/meetings.service';
 
 beforeAll(truncateAll);

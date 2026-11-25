@@ -4,7 +4,8 @@ Sathi is a **modular monolith**: one repository, one PostgreSQL database, three 
 
 ```
 frontend     React 19 SPA (Vite, Tailwind v4, TanStack Query, React Router, Recharts, Socket.IO client)
-backend/api     Express 5 REST API /api/v1 + Socket.IO (chat). Business modules under src/modules/*
+backend/api     Express 5 REST API /api/v1 + Socket.IO (chat). Feature modules under src/modules/* (routes → controller → service,
+                 plus validation/types); see backend/api/README.md for the folder structure and conventions
 backend/worker  BullMQ worker. Reuses backend/api/src/jobs/processor.ts so job rules live in one place
 shared  Pure, unit-tested domain logic shared by API and web:
                  matching engine, refund policy, booking & meeting state machines, consent evaluation,

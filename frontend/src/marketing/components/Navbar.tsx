@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'motion/
 import { ArrowRight, LayoutDashboard, Menu, X, LifeBuoy } from 'lucide-react';
 import { cx } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
-import { homeFor } from '../../pages/Auth';
+import { homeFor } from '../../features/auth/Auth';
 import { mainNav } from '../data/navigation';
 import { useMotionVariants } from '../animations/variants';
 import { Logo } from './Logo';
